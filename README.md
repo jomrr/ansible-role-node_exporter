@@ -18,8 +18,8 @@ collectors by name.
 
 - AlmaLinux package installations use EPEL. The role installs epel-release from
   AlmaLinux Extras.
-- Binary installations need HTTPS access to GitHub release assets. Selecting
-  latest also requires access to api.github.com from the managed host.
+- Binary installations download release assets over HTTPS. With `latest`, the
+  managed host resolves the version through GitHub's latest-release link.
 
 ## Dependencies
 

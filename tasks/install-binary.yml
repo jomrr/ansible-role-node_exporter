@@ -11,14 +11,17 @@
 
 - name: NODE_EXPORTER | Resolve the latest upstream release
   ansible.builtin.uri:
-    url: https://api.github.com/repos/prometheus/node_exporter/releases/latest
+    url: https://github.com/prometheus/node_exporter/releases/latest
+    method: HEAD
+    follow_redirects: none
+    status_code: [301, 302, 303, 307, 308]
   register: __node_exporter_latest
   check_mode: false
   when: node_exporter_version == 'latest'
 
 - name: NODE_EXPORTER | Check the resolved release tag before using it in paths
   ansible.builtin.assert:
-    that: __node_exporter_latest.json.tag_name is match('\Av[0-9]+\.[0-9]+\.[0-9]+\Z')
+    that: __node_exporter_latest_tag is match('\Av[0-9]+\.[0-9]+\.[0-9]+\Z')
     quiet: true
     fail_msg: The latest release must have a numeric vMAJOR.MINOR.PATCH tag.
   when: node_exporter_version == 'latest'
