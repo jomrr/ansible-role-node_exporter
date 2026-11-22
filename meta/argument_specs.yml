@@ -1,0 +1,29 @@
+---
+# role: node_exporter
+# file: meta/argument_specs.yml
+
+argument_specs:
+  main:
+    short_description: Install and configure Prometheus Node Exporter.
+    options:
+      node_exporter_install:
+        type: str
+        choices:
+          - package
+          - binary
+        default: package
+        description: Install the distribution package or the upstream binary.
+      node_exporter_version:
+        type: str
+        default: latest
+        description: Binary release to install. Use latest to follow stable releases or
+          a numeric major.minor.patch to pin a release.
+      node_exporter_listen_address:
+        type: str
+        default: 127.0.0.1:9100
+        description: TCP listener for HTTP metrics in host:port, [IPv6]:port or :port form.
+      node_exporter_collectors:
+        type: dict
+        default: {}
+        description: Collector names mapped to boolean switches. Unspecified collectors
+          retain the executable's defaults.

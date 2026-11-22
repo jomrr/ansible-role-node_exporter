@@ -1,0 +1,19 @@
+---
+# role: node_exporter
+# file: vars/main.yml
+
+__node_exporter_libexec: /usr/local/libexec/node_exporter
+__node_exporter_link: /usr/local/bin/node_exporter
+__node_exporter_architectures:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: armv7
+  armv6l: armv6
+  i686: '386'
+  ppc64le: ppc64le
+  s390x: s390x
+  riscv64: riscv64
+__node_exporter_version: "{{ __node_exporter_latest.json.tag_name | regex_replace('^v', '') if node_exporter_version == 'latest' else node_exporter_version }}"
+__node_exporter_release: "node_exporter-{{ __node_exporter_version }}.linux-{{ __node_exporter_architectures[ansible_facts.architecture] }}"
+__node_exporter_download_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ __node_exporter_version }}"
+__node_exporter_executable: "{{ __node_exporter_link if node_exporter_install == 'binary' else __node_exporter_package_binary }}"

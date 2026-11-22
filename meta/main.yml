@@ -1,0 +1,16 @@
+---
+# role: node_exporter
+# file: meta/main.yml
+
+galaxy_info:
+  author: Jonas Mauer
+  description: Install and configure Prometheus Node Exporter for Linux host metrics.
+  galaxy_tags:
+    - linux
+    - monitoring
+    - prometheus
+  issue_tracker_url: https://github.com/jomrr/ansible-role-node_exporter/issues
+  license: MIT
+  min_ansible_version: "2.22"
+  namespace: jomrr
+  role_name: node_exporter

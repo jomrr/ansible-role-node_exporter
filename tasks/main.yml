@@ -1,0 +1,72 @@
+---
+# role: node_exporter
+# file: tasks/main.yml
+
+- name: NODE_EXPORTER | Validate exporter settings
+  ansible.builtin.import_tasks: assert.yml
+
+- name: NODE_EXPORTER | Load the distribution package and service paths
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', __node_exporter_platform_files) }}"
+  vars:
+    __node_exporter_platform_files:
+      files:
+        - "{{ ansible_facts.os_family }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+
+- name: NODE_EXPORTER | Install the selected exporter
+  ansible.builtin.include_tasks: "install-{{ node_exporter_install }}.yml"
+
+- name: NODE_EXPORTER | Create the service account
+  become: true
+  become_user: root
+  ansible.builtin.user:
+    name: node_exporter
+    system: true
+    home: /nonexistent
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: NODE_EXPORTER | Create the configuration directory
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: /etc/node_exporter
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: NODE_EXPORTER | Configure the metrics listener and collectors
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: node_exporter.env.j2
+    dest: /etc/node_exporter/node_exporter.env
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: NODE_EXPORTER | Restart Node Exporter
+
+- name: NODE_EXPORTER | Install the service unit for the selected executable
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: "/etc/systemd/system/{{ __node_exporter_service }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: NODE_EXPORTER | Restart Node Exporter
+
+- name: NODE_EXPORTER | Apply service changes
+  ansible.builtin.meta: flush_handlers
+
+- name: NODE_EXPORTER | Enable and start the exporter
+  become: true
+  become_user: root
+  ansible.builtin.systemd_service:
+    name: "{{ __node_exporter_service }}"
+    enabled: true
+    state: started

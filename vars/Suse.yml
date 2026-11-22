@@ -1,0 +1,7 @@
+---
+# role: node_exporter
+# file: vars/Suse.yml
+
+__node_exporter_package: golang-github-prometheus-node_exporter
+__node_exporter_package_binary: /usr/bin/node_exporter
+__node_exporter_service: prometheus-node_exporter.service

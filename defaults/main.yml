@@ -1,0 +1,19 @@
+---
+# role: node_exporter
+# file: defaults/main.yml
+
+# Installation source for Node Exporter.
+# Choices: package, binary
+node_exporter_install: package
+
+# Upstream release for binary installs, either latest or a numeric major.minor.patch.
+node_exporter_version: latest
+
+# TCP address and port for the metrics endpoint.
+node_exporter_listen_address: '127.0.0.1:9100'
+
+# Collector switches by name, with true enabling and false disabling a collector.
+node_exporter_collectors: {}
+# node_exporter_collectors:
+#   processes: true
+#   infiniband: false

@@ -1,0 +1,9 @@
+---
+# role: node_exporter
+# file: molecule/resources/playbooks/converge.yml
+
+- name: "Molecule | converge | node_exporter"
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"

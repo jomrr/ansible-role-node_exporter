@@ -1,0 +1,7 @@
+---
+# role: node_exporter
+# file: vars/Debian.yml
+
+__node_exporter_package: prometheus-node-exporter
+__node_exporter_package_binary: /usr/bin/prometheus-node-exporter
+__node_exporter_service: prometheus-node-exporter.service

@@ -1,0 +1,63 @@
+---
+# role: node_exporter
+# file: molecule/resources/playbooks/verify.yml
+
+- name: NODE_EXPORTER | Verify the running exporter
+  hosts: all
+  gather_facts: true
+  vars:
+    __node_exporter_verify_binary: false
+    __node_exporter_verify_port: 9100
+  tasks:
+    - name: NODE_EXPORTER | Scrape the configured listener
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ __node_exporter_verify_port }}/metrics"
+        return_content: true
+      register: __node_exporter_metrics
+      until: __node_exporter_metrics.status == 200
+      retries: 10
+      delay: 1
+
+    - name: NODE_EXPORTER | Verify the build and configured collector metrics
+      ansible.builtin.assert:
+        that:
+          - __node_exporter_metrics.content is search('(?m)^node_exporter_build_info[{]')
+          - (__node_exporter_metrics.content is search('(?m)^node_uname_info[{]')) != __node_exporter_verify_binary
+        quiet: true
+
+    - name: NODE_EXPORTER | Read the distribution service state
+      ansible.builtin.systemd_service:
+        name: "{{ 'prometheus-node_exporter.service' if ansible_facts.os_family == 'Suse' else 'prometheus-node-exporter.service' }}"
+        state: started
+      check_mode: true
+      register: __node_exporter_running
+
+    - name: NODE_EXPORTER | Read the running exporter command line
+      ansible.builtin.slurp:
+        src: "/proc/{{ __node_exporter_running.status.MainPID }}/cmdline"
+      register: __node_exporter_cmdline
+
+    - name: NODE_EXPORTER | Inspect the local command link
+      ansible.builtin.stat:
+        path: /usr/local/bin/node_exporter
+        get_checksum: false
+      register: __node_exporter_command
+
+    - name: NODE_EXPORTER | Verify the enabled service uses the selected executable
+      ansible.builtin.assert:
+        that:
+          - __node_exporter_running.status.ActiveState == 'active'
+          - __node_exporter_running.status.UnitFileState == 'enabled'
+          - __node_exporter_command.stat.exists == __node_exporter_verify_binary
+          - __node_exporter_exe == '/usr/local/bin/node_exporter' if __node_exporter_verify_binary else __node_exporter_exe.startswith('/usr/bin/')
+        quiet: true
+      vars:
+        __node_exporter_exe: "{{ __node_exporter_cmdline.content | b64decode | regex_search('^[/a-zA-Z0-9_-]+') }}"
+
+    - name: NODE_EXPORTER | Match the running upstream version to the linked release
+      ansible.builtin.assert:
+        that:
+          - __node_exporter_command.stat.lnk_target is match('/usr/local/libexec/node_exporter/node_exporter-[0-9]+[.][0-9]+[.][0-9]+$')
+          - ('version="' ~ __node_exporter_command.stat.lnk_target.split('-')[-1] ~ '"') in __node_exporter_metrics.content
+        quiet: true
+      when: __node_exporter_verify_binary

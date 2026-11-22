@@ -1,0 +1,37 @@
+---
+# role: node_exporter
+# file: tasks/install-package.yml
+
+- name: NODE_EXPORTER | Enable EPEL on AlmaLinux
+  become: true
+  become_user: root
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_facts.distribution == 'AlmaLinux'
+
+- name: NODE_EXPORTER | Install the distribution package
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ __node_exporter_package }}"
+    state: present
+  module_defaults:
+    ansible.builtin.apt:
+      policy_rc_d: 101
+      install_recommends: false
+  notify: NODE_EXPORTER | Restart Node Exporter
+
+- name: NODE_EXPORTER | Identify the local upstream link
+  ansible.builtin.stat:
+    path: "{{ __node_exporter_link }}"
+    get_checksum: false
+  register: __node_exporter_local_command
+
+- name: NODE_EXPORTER | Retire the link to the upstream release
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ __node_exporter_link }}"
+    state: absent
+  when: __node_exporter_local_command.stat.lnk_target | default('') is match(__node_exporter_libexec ~ '/node_exporter-[0-9]+\.[0-9]+\.[0-9]+\Z')

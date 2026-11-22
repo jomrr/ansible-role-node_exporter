@@ -1,0 +1,11 @@
+---
+# role: node_exporter
+# file: handlers/main.yml
+
+- name: NODE_EXPORTER | Restart Node Exporter
+  become: true
+  become_user: root
+  ansible.builtin.systemd_service:
+    name: "{{ __node_exporter_service }}"
+    daemon_reload: true
+    state: restarted
