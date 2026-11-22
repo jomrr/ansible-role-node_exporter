@@ -26,6 +26,8 @@ provisioner:
     group_vars:
       all:
         ansible_podman_mount_detection: false
+        node_exporter_collectors:
+          systemd: true
   log: true
   playbooks:
     prepare: "../resources/playbooks/prepare.yml"
@@ -54,28 +56,64 @@ platforms:
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"
   - name: "debian-latest-node_exporter"
     image: "docker.io/jomrr/molecule-debian:latest"
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"
   - name: "fedora-latest-node_exporter"
     image: "docker.io/jomrr/molecule-fedora:latest"
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"
   - name: "opensuse-leap-latest-node_exporter"
     image: "docker.io/jomrr/molecule-opensuse-leap:latest"
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"
   - name: "opensuse-tumbleweed-latest-node_exporter"
     image: "docker.io/jomrr/molecule-opensuse-tumbleweed:latest"
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"
   - name: "ubuntu-latest-node_exporter"
     image: "docker.io/jomrr/molecule-ubuntu:latest"
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"

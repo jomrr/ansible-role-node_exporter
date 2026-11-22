@@ -23,6 +23,10 @@
         that:
           - __node_exporter_metrics.content is search('(?m)^node_exporter_build_info[{]')
           - (__node_exporter_metrics.content is search('(?m)^node_uname_info[{]')) != __node_exporter_verify_binary
+          - __node_exporter_metrics.content is search('(?m)^node_network_receive_bytes_total[{][^}]*device="lo"')
+          - __node_exporter_metrics.content is search('(?m)^node_filesystem_size_bytes[{][^}]*mountpoint="/home/node-exporter-test"')
+          - __node_exporter_metrics.content is search('(?m)^node_filesystem_readonly[{][^}]*mountpoint="/home/node-exporter-test"[^}]*[}] 0$')
+          - __node_exporter_metrics.content is search('(?m)^node_systemd_unit_state[{][^}]*state="active"[^}]*[}] 1$')
         quiet: true
 
     - name: NODE_EXPORTER | Read the distribution service state
@@ -31,6 +35,21 @@
         state: started
       check_mode: true
       register: __node_exporter_running
+
+    - name: NODE_EXPORTER | Read the kernel status of the exporter process
+      ansible.builtin.slurp:
+        src: "/proc/{{ __node_exporter_running.status.MainPID }}/status"
+      register: __node_exporter_process_status
+
+    - name: NODE_EXPORTER | Verify the effective service sandbox
+      ansible.builtin.assert:
+        that:
+          - __node_exporter_running.status.NoNewPrivileges | bool
+          - __node_exporter_running.status.ProtectSystem == 'strict'
+          - __node_exporter_process_status.content | b64decode is search('(?m)^CapBnd:\s+0+$')
+          - __node_exporter_running.status.RestrictNamespaces | bool
+          - __node_exporter_running.status.RestrictAddressFamilies.split() | sort == ['AF_INET', 'AF_INET6', 'AF_NETLINK', 'AF_UNIX']
+        quiet: true
 
     - name: NODE_EXPORTER | Read the running exporter command line
       ansible.builtin.slurp:

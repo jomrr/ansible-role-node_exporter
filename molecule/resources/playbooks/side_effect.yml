@@ -10,6 +10,7 @@
       node_exporter_install: binary
       node_exporter_listen_address: '127.0.0.1:19100'
       node_exporter_collectors:
+        systemd: true
         uname: false
 
 - name: NODE_EXPORTER | Verify the upstream executable and new listener

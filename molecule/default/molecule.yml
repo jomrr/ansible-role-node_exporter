@@ -23,6 +23,8 @@ provisioner:
     group_vars:
       all:
         ansible_podman_mount_detection: false
+        node_exporter_collectors:
+          systemd: true
   log: true
   playbooks:
     prepare: "../resources/playbooks/prepare.yml"
@@ -51,3 +53,9 @@ platforms:
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"
+    extra_opts:
+      - "--tmpfs=/home/node-exporter-test:rw,size=8m,mode=0755"

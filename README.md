@@ -103,6 +103,16 @@ Both modes use the same collector and listener settings in
 service name at boot and runs it as the unprivileged node_exporter user. Changes
 to the executable or configuration restart the service.
 
+## Security Notes
+
+- Node Exporter runs with a read-only system filesystem, an empty capability
+  bounding set and restricted namespace creation. Host mounts, including those
+  beneath home and temporary directories, stay visible with the service user's
+  normal read permissions.
+- The service allows IPv4 and IPv6 sockets for scrapes, Unix sockets for the
+  system D-Bus and Netlink sockets for kernel network statistics. Set
+  `node_exporter_collectors.systemd: true` to export systemd unit metrics.
+
 ## Operational Notes
 
 - Debian and Ubuntu (Universe) use `prometheus-node-exporter`. Fedora and
