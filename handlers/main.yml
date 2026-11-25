@@ -9,10 +9,15 @@
     daemon_reload: true
   listen: reload node exporter unit
 
-- name: Restart Node Exporter
+- name: Read service state before restarting the exporter
+  ansible.builtin.service_facts:
+  listen: restart node exporter
+
+- name: Restart the running exporter
   become: true
   become_user: root
   ansible.builtin.systemd_service:
     name: "{{ __node_exporter_service }}"
     state: restarted
+  when: ansible_facts.services[__node_exporter_service].state | default('') == 'running'
   listen: restart node exporter

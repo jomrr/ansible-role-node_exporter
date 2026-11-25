@@ -161,6 +161,10 @@ configuration and release leaves the running process in place.
 
 ## Operational Notes
 
+- Run `tasks_from: install` to install the selected exporter and create the
+  `node_exporter` system user and group. You can then grant that user a read ACL
+  on a TLS private key before applying the full role. On Debian the package
+  enables its vendor unit for the next boot.
 - Debian and Ubuntu (Universe) use `prometheus-node-exporter`. Fedora and
   AlmaLinux (EPEL) use `node-exporter`. openSUSE Leap and Tumbleweed use
   `golang-github-prometheus-node_exporter`. The package manager handles

@@ -9,6 +9,7 @@
       - 0 < node_exporter_listen_address.rsplit(':', 1)[1] | int <= 65535
     fail_msg: Use host:port, [IPv6]:port or :port with a port between 1 and 65535.
     quiet: true
+  when: __node_exporter_configure
 
 - name: assert | Validate collector names and switches
   ansible.builtin.assert:
@@ -21,14 +22,15 @@
   loop_control:
     loop_var: __node_exporter_collector
     label: "{{ __node_exporter_collector.key }}"
+  when: __node_exporter_configure
 
-- name: assert | Validate the requested exporter release
+- name: assert | Validate the installation method and requested release
   ansible.builtin.assert:
     that:
-      - node_exporter_version == 'latest' or node_exporter_version is match('\A[0-9]+\.[0-9]+\.[0-9]+\Z')
-    fail_msg: Binary installs require latest or a numeric major.minor.patch release.
+      - node_exporter_install in ['package', 'binary']
+      - node_exporter_install == 'package' or node_exporter_version == 'latest' or node_exporter_version is match('\A[0-9]+\.[0-9]+\.[0-9]+\Z')
+    fail_msg: Use package or binary. Binary installs require latest or a numeric major.minor.patch release.
     quiet: true
-  when: node_exporter_install == 'binary'
 
 - name: assert | Require an available release architecture
   ansible.builtin.assert:

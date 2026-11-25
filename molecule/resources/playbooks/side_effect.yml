@@ -2,27 +2,6 @@
 # role: node_exporter
 # file: molecule/resources/playbooks/side_effect.yml
 
-- name: Prepare credentials for an authenticated remote scrape
-  hosts: all
-  gather_facts: true
-  tasks:
-    - name: Create the test certificate directory
-      become: true
-      become_user: root
-      ansible.builtin.file:
-        path: /etc/node_exporter-test
-        state: directory
-        owner: root
-        group: node_exporter
-        mode: '0750'
-
-    - name: Create separate test identities
-      ansible.builtin.include_tasks: ../tasks/certificate.yml
-      loop: [server, client]
-      loop_control:
-        loop_var: __node_exporter_identity
-        label: "{{ __node_exporter_identity }}"
-
 - name: Switch to the latest upstream release
   hosts: all
   gather_facts: false

@@ -2,6 +2,7 @@
 # role: node_exporter
 # file: vars/main.yml
 
+__node_exporter_configure: false
 __node_exporter_required_facts: [os_family, distribution, architecture]
 __node_exporter_required_facts_subsets: ['!all', '!min', distribution, platform]
 __node_exporter_web_config_file: /etc/node_exporter/web-config.ansible.yml

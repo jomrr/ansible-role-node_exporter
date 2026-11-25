@@ -8,8 +8,8 @@
   community.crypto.openssl_privatekey:
     path: "/etc/node_exporter-test/{{ __node_exporter_identity }}.key"
     size: 2048
-    group: "{{ 'node_exporter' if __node_exporter_identity == 'server' else 'root' }}"
-    mode: "{{ '0640' if __node_exporter_identity == 'server' else '0600' }}"
+    group: root
+    mode: '0600'
 
 - name: Request a certificate for the test identity
   become: true

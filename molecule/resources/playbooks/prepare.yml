@@ -4,12 +4,55 @@
 
 - name: Prepare the test platforms
   hosts: all
-  gather_facts: true
+  gather_facts: false
   tasks:
-    - name: Refresh package metadata and install the test certificate dependency
+    - name: Refresh package metadata and install the test certificate and ACL tools
       become: true
       become_user: root
       ansible.builtin.package:
-        name: python3-cryptography
+        name: [python3-cryptography, acl]
         state: present
         update_cache: true
+
+    - name: Install the exporter before granting access to its TLS key
+      ansible.builtin.include_role:
+        name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+        tasks_from: install
+
+- name: Prepare credentials before the first full role run
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Verify the standalone installation left the metrics port closed
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 9100
+        state: stopped
+        timeout: 3
+
+    - name: Create the test certificate directory
+      become: true
+      become_user: root
+      ansible.builtin.file:
+        path: /etc/node_exporter-test
+        state: directory
+        owner: root
+        group: node_exporter
+        mode: '0750'
+
+    - name: Create separate test identities
+      ansible.builtin.include_tasks: ../tasks/certificate.yml
+      loop: [server, client]
+      loop_control:
+        loop_var: __node_exporter_identity
+        label: "{{ __node_exporter_identity }}"
+
+    - name: Grant the exporter read access to the server key
+      become: true
+      become_user: root
+      ansible.posix.acl:
+        path: /etc/node_exporter-test/server.key
+        etype: user
+        entity: node_exporter
+        permissions: r
+        state: present

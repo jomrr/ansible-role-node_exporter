@@ -5,33 +5,10 @@
 - name: Gather facts and load platform settings
   ansible.builtin.import_tasks: set_vars.yml
 
-- name: Validate exporter settings
-  ansible.builtin.import_tasks: assert.yml
-
-- name: Install the selected exporter
+- name: Install the selected exporter and its service account
   ansible.builtin.import_tasks: install.yml
-  module_defaults:
-    ansible.builtin.apt:
-      policy_rc_d: 101
-      install_recommends: false
-
-- name: Create the service group
-  become: true
-  become_user: root
-  ansible.builtin.group:
-    name: node_exporter
-    system: true
-
-- name: Create the service account
-  become: true
-  become_user: root
-  ansible.builtin.user:
-    name: node_exporter
-    system: true
-    group: node_exporter
-    home: /nonexistent
-    create_home: false
-    shell: /usr/sbin/nologin
+  vars:
+    __node_exporter_configure: true
 
 - name: Create the configuration directory
   become: true

@@ -2,6 +2,13 @@
 # role: node_exporter
 # file: tasks/install.yml
 
+- name: install | Load platform settings for a standalone installation
+  ansible.builtin.import_tasks: set_vars.yml
+  when: not __node_exporter_configure
+
+- name: install | Validate exporter settings
+  ansible.builtin.import_tasks: assert.yml
+
 - name: install | Enable EPEL for distribution packages on AlmaLinux
   become: true
   become_user: root
@@ -10,15 +17,39 @@
     state: present
   when: ansible_facts.distribution == 'AlmaLinux' and node_exporter_install == 'package'
 
-- name: install | Install the distribution package
+- name: install | Install the selected exporter
+  module_defaults:
+    ansible.builtin.apt:
+      policy_rc_d: 101
+      install_recommends: false
+  block:
+    - name: install | Install the distribution package
+      become: true
+      become_user: root
+      ansible.builtin.package:
+        name: "{{ __node_exporter_package }}"
+        state: present
+      when: node_exporter_install == 'package'
+      notify: restart node exporter
+
+    - name: install | Install the upstream exporter
+      ansible.builtin.include_tasks: install-binary.yml
+      when: node_exporter_install == 'binary'
+
+- name: install | Create the service group
   become: true
   become_user: root
-  ansible.builtin.package:
-    name: "{{ __node_exporter_package }}"
-    state: present
-  when: node_exporter_install == 'package'
-  notify: restart node exporter
+  ansible.builtin.group:
+    name: node_exporter
+    system: true
 
-- name: install | Install the upstream exporter
-  ansible.builtin.include_tasks: install-binary.yml
-  when: node_exporter_install == 'binary'
+- name: install | Create the service account
+  become: true
+  become_user: root
+  ansible.builtin.user:
+    name: node_exporter
+    system: true
+    group: node_exporter
+    home: /nonexistent
+    create_home: false
+    shell: /usr/sbin/nologin
