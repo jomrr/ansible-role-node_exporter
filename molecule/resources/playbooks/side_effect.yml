@@ -2,25 +2,63 @@
 # role: node_exporter
 # file: molecule/resources/playbooks/side_effect.yml
 
-- name: NODE_EXPORTER | Switch to the latest upstream release
+- name: Prepare credentials for an authenticated remote scrape
   hosts: all
   gather_facts: true
+  tasks:
+    - name: Create the test certificate directory
+      become: true
+      become_user: root
+      ansible.builtin.file:
+        path: /etc/node_exporter-test
+        state: directory
+        owner: root
+        group: node_exporter
+        mode: '0750'
+
+    - name: Create separate test identities
+      ansible.builtin.include_tasks: ../tasks/certificate.yml
+      loop: [server, client]
+      loop_control:
+        loop_var: __node_exporter_identity
+        label: "{{ __node_exporter_identity }}"
+
+- name: Switch to the latest upstream release
+  hosts: all
+  gather_facts: false
   roles:
     - role: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
       node_exporter_install: binary
-      node_exporter_listen_address: '127.0.0.1:19100'
+      node_exporter_listen_address: '0.0.0.0:19100'
+      node_exporter_web_config:
+        tls_server_config:
+          cert_file: /etc/node_exporter-test/server.crt
+          key_file: /etc/node_exporter-test/server.key
+          client_ca_file: /etc/node_exporter-test/client.crt
+          client_auth_type: RequireAndVerifyClientCert
+        basic_auth_users:
+          monitor: '$2b$05$6PhAVRmVAJvUjg7acGT.bu9e5vPVbEQTeju/F1m2xCWPg4RrLjh2m'
       node_exporter_collectors:
         systemd: true
         uname: false
 
-- name: NODE_EXPORTER | Verify the upstream executable and new listener
+- name: Verify the upstream executable and new listener
   ansible.builtin.import_playbook: verify.yml
   vars:
     __node_exporter_verify_binary: true
+    __node_exporter_verify_tls: true
+    __node_exporter_verify_local_only: false
     __node_exporter_verify_port: 19100
+    __node_exporter_verify_url: "https://{{ ansible_facts.default_ipv4.address }}:19100/metrics"
 
-- name: NODE_EXPORTER | Restore the distribution executable and default settings
+- name: Restore the distribution executable with a plain remote HTTP listener
   ansible.builtin.import_playbook: converge.yml
+  vars:
+    node_exporter_listen_address: '0.0.0.0:19100'
 
-- name: NODE_EXPORTER | Verify the restored package service
+- name: Verify remote HTTP scrapes after disabling TLS and authentication
   ansible.builtin.import_playbook: verify.yml
+  vars:
+    __node_exporter_verify_local_only: false
+    __node_exporter_verify_port: 19100
+    __node_exporter_verify_url: "http://{{ ansible_facts.default_ipv4.address }}:19100/metrics"

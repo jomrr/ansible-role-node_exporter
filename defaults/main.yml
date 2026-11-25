@@ -2,6 +2,9 @@
 # role: node_exporter
 # file: defaults/main.yml
 
+# Back up managed files before replacing their contents.
+node_exporter_backup: true
+
 # Installation source for Node Exporter.
 # Choices: package, binary
 node_exporter_install: package
@@ -11,6 +14,9 @@ node_exporter_version: latest
 
 # TCP address and port for the metrics endpoint.
 node_exporter_listen_address: '127.0.0.1:9100'
+
+# Native exporter-toolkit web configuration for optional TLS and authentication.
+node_exporter_web_config: {}
 
 # Collector switches by name, with true enabling and false disabling a collector.
 node_exporter_collectors: {}

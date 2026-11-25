@@ -1,0 +1,24 @@
+---
+# role: node_exporter
+# file: tasks/install.yml
+
+- name: install | Enable EPEL for distribution packages on AlmaLinux
+  become: true
+  become_user: root
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_facts.distribution == 'AlmaLinux' and node_exporter_install == 'package'
+
+- name: install | Install the distribution package
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: "{{ __node_exporter_package }}"
+    state: present
+  when: node_exporter_install == 'package'
+  notify: restart node exporter
+
+- name: install | Install the upstream exporter
+  ansible.builtin.include_tasks: install-binary.yml
+  when: node_exporter_install == 'binary'

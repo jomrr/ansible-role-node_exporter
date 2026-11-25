@@ -11,7 +11,7 @@ Install and configure Prometheus Node Exporter for Linux host metrics.
 ## Purpose
 
 Publish Linux host metrics at `http://127.0.0.1:9100/metrics` by default. Set
-the listener to a reachable address for a remote Prometheus server and select
+the listen address for direct remote scraping over HTTP or HTTPS. Select
 collectors by name.
 
 ## Requirements
@@ -29,11 +29,25 @@ collections:
     version: '>=12.0.0'
   - name: ansible.posix
     version: '>=2.0.0'
+  - name: community.crypto
+    version: '>=3.0.0'
   - name: containers.podman
     version: '>=1.7.0'
 ```
 
 ## Role Variables
+
+### `node_exporter_backup`
+
+Type: `bool`. Required: `false`.
+
+Back up managed files before replacing their contents.
+
+Default:
+
+```yaml
+node_exporter_backup: true
+```
 
 ### `node_exporter_install`
 
@@ -64,12 +78,25 @@ node_exporter_version: latest
 
 Type: `str`. Required: `false`.
 
-TCP listener for HTTP metrics in host:port, [IPv6]:port or :port form.
+TCP listener for metrics in host:port, [IPv6]:port or :port form.
 
 Default:
 
 ```yaml
 node_exporter_listen_address: 127.0.0.1:9100
+```
+
+### `node_exporter_web_config`
+
+Type: `dict`. Required: `false`.
+
+Native exporter-toolkit web configuration. An empty mapping serves HTTP without
+authentication.
+
+Default:
+
+```yaml
+node_exporter_web_config: {}
 ```
 
 ### `node_exporter_collectors`
@@ -88,6 +115,7 @@ node_exporter_collectors: {}
 ## Managed Files
 
 - `/etc/node_exporter/node_exporter.env`
+- `/etc/node_exporter/web-config.ansible.yml`
 - `/usr/local/libexec/node_exporter/node_exporter-<version>`
 - `/usr/local/bin/node_exporter`
 
@@ -101,10 +129,28 @@ binary release requires a normal run to create its files.
 Both modes use the same collector and listener settings in
 `/etc/node_exporter/node_exporter.env`. The role enables the distribution's
 service name at boot and runs it as the unprivileged node_exporter user. Changes
-to the executable or configuration restart the service.
+to the executable or configuration restart the service. Reapplying the same
+configuration and release leaves the running process in place.
 
 ## Security Notes
 
+- The default listener accepts unauthenticated HTTP scrapes from local
+  processes. Binding a network interface makes host metrics available to clients
+  that can reach that interface. Listener and authentication settings apply
+  independently in both installation modes.
+- Set `node_exporter_web_config` to native exporter-toolkit YAML for HTTPS,
+  bcrypt Basic Auth or mutual TLS. Use HTTPS with Basic Auth to protect
+  credentials in transit. For mutual TLS, set `client_auth_type:
+  RequireAndVerifyClientCert` and a trusted client CA. Reference certificate and
+  key files by absolute paths readable by the node_exporter service account.
+  Store inventory secrets in Ansible Vault.
+- Ansible renders the web configuration directly. Node Exporter reads it at
+  service startup and on scrape requests. The service group can read the managed
+  file. The role suppresses its contents in task output and diffs. Set the
+  mapping to `{}` to restore HTTP without authentication and remove the active
+  web configuration.
+- Only root can read the managed environment file. The system service manager
+  reads the file before starting the exporter.
 - Node Exporter runs with a read-only system filesystem, an empty capability
   bounding set and restricted namespace creation. Host mounts, including those
   beneath home and temporary directories, stay visible with the service user's
@@ -127,8 +173,6 @@ to the executable or configuration restart the service.
 - The systemd unit in `/etc/systemd/system/` is named
   `prometheus-node_exporter.service` on openSUSE and
   `prometheus-node-exporter.service` elsewhere.
-- The endpoint serves metrics over HTTP. Limit access to the Prometheus scraper
-  when using a network listener.
 
 ## Supported Platforms
 
@@ -148,7 +192,7 @@ to the executable or configuration restart the service.
 ```yaml
 - name: Export host metrics
   hosts: monitored
-  gather_facts: true
+  gather_facts: false
   roles:
     - role: jomrr.node_exporter
 ```
@@ -156,19 +200,36 @@ to the executable or configuration restart the service.
 ### Follow upstream releases and enable the processes collector
 
 ```yaml
-- name: Export metrics on the monitoring network
+- name: Export process metrics locally
   hosts: monitored
-  gather_facts: true
+  gather_facts: false
   roles:
     - role: jomrr.node_exporter
       node_exporter_install: binary
-      node_exporter_listen_address: '192.0.2.10:9100'
       node_exporter_collectors:
         processes: true
 ```
 
+### Scrape a monitoring interface over HTTPS with Basic Auth
+
+```yaml
+- name: Export host metrics to remote Prometheus
+  hosts: monitored
+  gather_facts: false
+  roles:
+    - role: jomrr.node_exporter
+      node_exporter_listen_address: '192.0.2.10:9100'
+      node_exporter_web_config:
+        tls_server_config:
+          cert_file: /etc/monitoring/tls/server.crt
+          key_file: /etc/monitoring/tls/server.key
+        basic_auth_users:
+          prometheus: "{{ vault_node_exporter_scraper_bcrypt }}"
+```
+
 ## References
 
+- [Exporter Toolkit web configuration](https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md)
 - [Node Exporter downloads](https://prometheus.io/download/#node_exporter)
 - [Latest upstream release](https://github.com/prometheus/node_exporter/releases/latest)
 - [Node Exporter collectors](https://github.com/prometheus/node_exporter#collectors)

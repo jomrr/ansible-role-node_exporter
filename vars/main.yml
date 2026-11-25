@@ -2,6 +2,10 @@
 # role: node_exporter
 # file: vars/main.yml
 
+__node_exporter_required_facts: [os_family, distribution, architecture]
+__node_exporter_required_facts_subsets: ['!all', '!min', distribution, platform]
+__node_exporter_web_config_file: /etc/node_exporter/web-config.ansible.yml
+__node_exporter_validate_unit: "/usr/bin/systemd-analyze verify %s:{{ __node_exporter_service }}"
 __node_exporter_libexec: /usr/local/libexec/node_exporter
 __node_exporter_link: /usr/local/bin/node_exporter
 __node_exporter_architectures:
@@ -13,8 +17,10 @@ __node_exporter_architectures:
   ppc64le: ppc64le
   s390x: s390x
   riscv64: riscv64
-__node_exporter_latest_tag: "{{ __node_exporter_latest.location | basename }}"
-__node_exporter_version: "{{ __node_exporter_latest_tag.removeprefix('v') if node_exporter_version == 'latest' else node_exporter_version }}"
-__node_exporter_release: "node_exporter-{{ __node_exporter_version }}.linux-{{ __node_exporter_architectures[ansible_facts.architecture] }}"
+__node_exporter_latest_tag: "{{ __node_exporter_latest.location | default('') | basename }}"
+__node_exporter_version: >-
+  {{ __node_exporter_latest_tag.removeprefix('v') if node_exporter_version == 'latest' else node_exporter_version }}
+__node_exporter_release: >-
+  node_exporter-{{ __node_exporter_version }}.linux-{{ __node_exporter_architectures[ansible_facts.architecture] }}
 __node_exporter_download_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ __node_exporter_version }}"
 __node_exporter_executable: "{{ __node_exporter_link if node_exporter_install == 'binary' else __node_exporter_package_binary }}"

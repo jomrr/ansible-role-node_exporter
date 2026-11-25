@@ -1,0 +1,4 @@
+{{ ansible_managed | comment(prefix_count=0, postfix_count=0) }}
+# file: {{ template_destpath }}
+
+{{ node_exporter_web_config | to_nice_yaml(indent=2, sort_keys=false) }}

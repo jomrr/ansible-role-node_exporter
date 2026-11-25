@@ -2,10 +2,17 @@
 # role: node_exporter
 # file: handlers/main.yml
 
-- name: NODE_EXPORTER | Restart Node Exporter
+- name: Reload systemd units
+  become: true
+  become_user: root
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  listen: reload node exporter unit
+
+- name: Restart Node Exporter
   become: true
   become_user: root
   ansible.builtin.systemd_service:
     name: "{{ __node_exporter_service }}"
-    daemon_reload: true
     state: restarted
+  listen: restart node exporter

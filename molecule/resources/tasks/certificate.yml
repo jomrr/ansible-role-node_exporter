@@ -1,0 +1,33 @@
+---
+# role: node_exporter
+# file: molecule/resources/tasks/certificate.yml
+
+- name: Generate a test private key
+  become: true
+  become_user: root
+  community.crypto.openssl_privatekey:
+    path: "/etc/node_exporter-test/{{ __node_exporter_identity }}.key"
+    size: 2048
+    group: "{{ 'node_exporter' if __node_exporter_identity == 'server' else 'root' }}"
+    mode: "{{ '0640' if __node_exporter_identity == 'server' else '0600' }}"
+
+- name: Request a certificate for the test identity
+  become: true
+  become_user: root
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "/etc/node_exporter-test/{{ __node_exporter_identity }}.key"
+    common_name: "{{ __node_exporter_identity }}"
+    subject_alt_name: ["IP:{{ ansible_facts.default_ipv4.address }}"]
+    extended_key_usage: "{{ ['serverAuth'] if __node_exporter_identity == 'server' else ['clientAuth'] }}"
+  register: __node_exporter_csr
+
+- name: Issue the short-lived test certificate
+  become: true
+  become_user: root
+  community.crypto.x509_certificate:
+    path: "/etc/node_exporter-test/{{ __node_exporter_identity }}.crt"
+    privatekey_path: "/etc/node_exporter-test/{{ __node_exporter_identity }}.key"
+    csr_content: "{{ __node_exporter_csr.csr }}"
+    provider: selfsigned
+    selfsigned_not_after: +1d
+    mode: '0644'

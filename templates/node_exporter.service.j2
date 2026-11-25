@@ -1,4 +1,4 @@
-# Managed by ansible.
+{{ ansible_managed | comment(prefix_count=0, postfix_count=0) }}
 # file: {{ template_destpath }}
 
 [Unit]
@@ -9,7 +9,7 @@ After=network-online.target
 [Service]
 User=node_exporter
 EnvironmentFile=/etc/node_exporter/node_exporter.env
-ExecStart={{ __node_exporter_executable }} --web.listen-address ${LISTEN_ADDRESS} $COLLECTORS
+ExecStart={{ __node_exporter_executable }} --web.listen-address ${LISTEN_ADDRESS} $COLLECTORS $WEB_CONFIG
 NoNewPrivileges=true
 CapabilityBoundingSet=
 ProtectSystem=strict

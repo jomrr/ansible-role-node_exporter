@@ -2,31 +2,14 @@
 # role: node_exporter
 # file: tasks/install-binary.yml
 
-- name: NODE_EXPORTER | Install the release archive prerequisites
+- name: install-binary | Install the release archive prerequisites
   become: true
   become_user: root
   ansible.builtin.package:
     name: [ca-certificates, gzip, tar]
     state: present
 
-- name: NODE_EXPORTER | Resolve the latest upstream release
-  ansible.builtin.uri:
-    url: https://github.com/prometheus/node_exporter/releases/latest
-    method: HEAD
-    follow_redirects: none
-    status_code: [301, 302, 303, 307, 308]
-  register: __node_exporter_latest
-  check_mode: false
-  when: node_exporter_version == 'latest'
-
-- name: NODE_EXPORTER | Check the resolved release tag before using it in paths
-  ansible.builtin.assert:
-    that: __node_exporter_latest_tag is match('\Av[0-9]+\.[0-9]+\.[0-9]+\Z')
-    quiet: true
-    fail_msg: The latest release must have a numeric vMAJOR.MINOR.PATCH tag.
-  when: node_exporter_version == 'latest'
-
-- name: NODE_EXPORTER | Create the local release and command directories
+- name: install-binary | Create the local release and command directories
   become: true
   become_user: root
   ansible.builtin.file:
@@ -40,23 +23,41 @@
     - "{{ __node_exporter_link | dirname }}"
   loop_control:
     loop_var: __node_exporter_directory
+    label: "{{ __node_exporter_directory }}"
 
-- name: NODE_EXPORTER | Download and verify the release archive
+- name: install-binary | Resolve the latest upstream release
+  ansible.builtin.uri:
+    url: "https://github.com/prometheus/node_exporter/releases/latest"
+    method: HEAD
+    follow_redirects: none
+    use_netrc: false
+    status_code: [301, 302, 303, 307, 308]
+  register: __node_exporter_latest
+  failed_when: >-
+    __node_exporter_latest is failed or
+    __node_exporter_latest_tag is not match('\Av[0-9]+\.[0-9]+\.[0-9]+\Z')
+  check_mode: false
+  when: node_exporter_version == 'latest'
+
+- name: install-binary | Download and verify the release archive
   become: true
   become_user: root
   ansible.builtin.get_url:
     url: "{{ __node_exporter_download_url }}/{{ __node_exporter_release }}.tar.gz"
+    use_netrc: false
+    backup: "{{ node_exporter_backup }}"
     checksum: "sha256:{{ __node_exporter_download_url }}/sha256sums.txt"
     dest: "/var/cache/{{ __node_exporter_release }}.tar.gz"
     owner: root
     group: root
     mode: '0644'
+  register: __node_exporter_archive
 
-- name: NODE_EXPORTER | Install the versioned executable
+- name: install-binary | Install the versioned executable
   become: true
   become_user: root
   ansible.builtin.unarchive:
-    src: "/var/cache/{{ __node_exporter_release }}.tar.gz"
+    src: "{{ __node_exporter_archive.dest }}"
     remote_src: true
     dest: "{{ __node_exporter_libexec }}"
     include:
@@ -67,9 +68,9 @@
     owner: root
     group: root
     mode: '0755'
-  notify: NODE_EXPORTER | Restart Node Exporter
+  notify: restart node exporter
 
-- name: NODE_EXPORTER | Point the local command at the selected release
+- name: install-binary | Point the local command at the selected release
   become: true
   become_user: root
   ansible.builtin.file:
@@ -77,4 +78,4 @@
     dest: "{{ __node_exporter_link }}"
     state: link
     follow: false
-  notify: NODE_EXPORTER | Restart Node Exporter
+  notify: restart node exporter

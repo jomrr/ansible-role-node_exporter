@@ -6,6 +6,10 @@ argument_specs:
   main:
     short_description: Install and configure Prometheus Node Exporter.
     options:
+      node_exporter_backup:
+        type: bool
+        default: true
+        description: Back up managed files before replacing their contents.
       node_exporter_install:
         type: str
         choices:
@@ -21,7 +25,13 @@ argument_specs:
       node_exporter_listen_address:
         type: str
         default: 127.0.0.1:9100
-        description: TCP listener for HTTP metrics in host:port, [IPv6]:port or :port form.
+        description: TCP listener for metrics in host:port, [IPv6]:port or :port form.
+      node_exporter_web_config:
+        type: dict
+        default: {}
+        no_log: true
+        description: Native exporter-toolkit web configuration. An empty mapping serves
+          HTTP without authentication.
       node_exporter_collectors:
         type: dict
         default: {}

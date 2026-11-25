@@ -2,7 +2,7 @@
 # role: node_exporter
 # file: tasks/assert.yml
 
-- name: NODE_EXPORTER | Validate the metrics listener
+- name: assert | Validate the metrics listener
   ansible.builtin.assert:
     that:
       - node_exporter_listen_address is match('\A(?:[a-zA-Z0-9.-]*|\[[a-fA-F0-9:]+\]):[0-9]{1,5}\Z')
@@ -10,7 +10,7 @@
     fail_msg: Use host:port, [IPv6]:port or :port with a port between 1 and 65535.
     quiet: true
 
-- name: NODE_EXPORTER | Validate collector names and switches
+- name: assert | Validate collector names and switches
   ansible.builtin.assert:
     that:
       - __node_exporter_collector.key is string and __node_exporter_collector.key is match('\A[a-z][a-z0-9_]*\Z')
@@ -22,11 +22,17 @@
     loop_var: __node_exporter_collector
     label: "{{ __node_exporter_collector.key }}"
 
-- name: NODE_EXPORTER | Validate the requested upstream release and architecture
+- name: assert | Validate the requested exporter release
   ansible.builtin.assert:
     that:
       - node_exporter_version == 'latest' or node_exporter_version is match('\A[0-9]+\.[0-9]+\.[0-9]+\Z')
-      - ansible_facts.architecture in __node_exporter_architectures
-    fail_msg: Binary installs require latest or a numeric major.minor.patch release and a supported Linux architecture.
+    fail_msg: Binary installs require latest or a numeric major.minor.patch release.
     quiet: true
+  when: node_exporter_install == 'binary'
+
+- name: assert | Require an available release architecture
+  ansible.builtin.assert:
+    that: ansible_facts.architecture in __node_exporter_architectures
+    quiet: true
+    fail_msg: "No upstream binary mapping for {{ ansible_facts.architecture }}."
   when: node_exporter_install == 'binary'

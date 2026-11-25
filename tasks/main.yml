@@ -2,42 +2,63 @@
 # role: node_exporter
 # file: tasks/main.yml
 
-- name: NODE_EXPORTER | Validate exporter settings
+- name: Gather facts and load platform settings
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Validate exporter settings
   ansible.builtin.import_tasks: assert.yml
 
-- name: NODE_EXPORTER | Load the distribution package and service paths
-  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', __node_exporter_platform_files) }}"
-  vars:
-    __node_exporter_platform_files:
-      files:
-        - "{{ ansible_facts.os_family }}.yml"
-      paths:
-        - "{{ role_path }}/vars"
+- name: Install the selected exporter
+  ansible.builtin.import_tasks: install.yml
+  module_defaults:
+    ansible.builtin.apt:
+      policy_rc_d: 101
+      install_recommends: false
 
-- name: NODE_EXPORTER | Install the selected exporter
-  ansible.builtin.include_tasks: "install-{{ node_exporter_install }}.yml"
+- name: Create the service group
+  become: true
+  become_user: root
+  ansible.builtin.group:
+    name: node_exporter
+    system: true
 
-- name: NODE_EXPORTER | Create the service account
+- name: Create the service account
   become: true
   become_user: root
   ansible.builtin.user:
     name: node_exporter
     system: true
+    group: node_exporter
     home: /nonexistent
     create_home: false
     shell: /usr/sbin/nologin
 
-- name: NODE_EXPORTER | Create the configuration directory
+- name: Create the configuration directory
   become: true
   become_user: root
   ansible.builtin.file:
     path: /etc/node_exporter
     state: directory
     owner: root
-    group: root
-    mode: '0755'
+    group: node_exporter
+    mode: '0710'
 
-- name: NODE_EXPORTER | Configure the metrics listener and collectors
+- name: Install the web configuration
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: web-config.yml.j2
+    dest: "{{ __node_exporter_web_config_file }}"
+    owner: root
+    group: node_exporter
+    mode: '0640'
+    backup: "{{ node_exporter_backup }}"
+  no_log: true
+  diff: false
+  notify: restart node exporter
+  when: node_exporter_web_config | length > 0
+
+- name: Configure the metrics listener and collectors
   become: true
   become_user: root
   ansible.builtin.template:
@@ -45,11 +66,11 @@
     dest: /etc/node_exporter/node_exporter.env
     owner: root
     group: root
-    mode: '0644'
-    backup: true
-  notify: NODE_EXPORTER | Restart Node Exporter
+    mode: '0600'
+    backup: "{{ node_exporter_backup }}"
+  notify: restart node exporter
 
-- name: NODE_EXPORTER | Install the service unit for the selected executable
+- name: Install the service unit for the selected executable
   become: true
   become_user: root
   ansible.builtin.template:
@@ -58,15 +79,44 @@
     owner: root
     group: root
     mode: '0644'
-  notify: NODE_EXPORTER | Restart Node Exporter
+    backup: "{{ node_exporter_backup }}"
+    validate: "{{ __node_exporter_validate_unit }}"
+  notify:
+    - reload node exporter unit
+    - restart node exporter
 
-- name: NODE_EXPORTER | Apply service changes
+- name: Apply service changes
   ansible.builtin.meta: flush_handlers
 
-- name: NODE_EXPORTER | Enable and start the exporter
+- name: Enable and start the exporter
   become: true
   become_user: root
   ansible.builtin.systemd_service:
     name: "{{ __node_exporter_service }}"
     enabled: true
     state: started
+
+- name: Remove the unused managed web configuration
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ __node_exporter_web_config_file }}"
+    state: absent
+  when: node_exporter_web_config | length == 0
+
+- name: Retire the upstream command after switching to the distribution executable
+  when: node_exporter_install == 'package'
+  block:
+    - name: Identify the local upstream link
+      ansible.builtin.stat:
+        path: "{{ __node_exporter_link }}"
+        get_checksum: false
+      register: __node_exporter_local_command
+
+    - name: Retire the link to the upstream release
+      become: true
+      become_user: root
+      ansible.builtin.file:
+        path: "{{ __node_exporter_link }}"
+        state: absent
+      when: __node_exporter_local_command.stat.lnk_target | default('') is match(__node_exporter_libexec ~ '/node_exporter-[0-9]+\.[0-9]+\.[0-9]+\Z')
